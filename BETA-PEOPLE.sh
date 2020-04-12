@@ -36,7 +36,8 @@ options=(1 "ECE Install Part-1, then reboot." off    # any option can be set to 
          4 "Beats Installation & Configuration." off
 	 5 "Logstash Only Install & Configuration." off
          6 "APM Server Installation & Configuration." off
-	 7 "Make like a tree, and leave." off)
+	 7 "K8S & ECK Installation & Cluster Deployment." off
+	 8 "Make like a tree, and leave." off)
 choices=$("${cmd[@]}" "${options[@]}" 2>&1 >/dev/tty)
 clear
 for choice in $choices
