@@ -364,16 +364,7 @@ echo "gpgkey=https://artifacts.elastic.co/GPG-KEY-elasticsearch" | sudo tee -a /
 echo "enabled=1" | sudo tee -a /etc/yum.repos.d/elasticsearch.repo
 echo "autorefresh=1" | sudo tee -a /etc/yum.repos.d/elasticsearch.repo
 echo "type=rpm-md" | sudo tee -a /etc/yum.repos.d/elasticsearch.repo
-# Elastic 6.X repo present for Heartbeat dashboard
-echo "[elasticsearch-6.x]" | sudo tee -a /etc/yum.repos.d/elasticsearch.repo
-echo "name=Elasticsearch repository for 6.x packages" | sudo tee -a /etc/yum.repos.d/elasticsearch.repo
-echo "baseurl=https://artifacts.elastic.co/packages/6.x/yum" | sudo tee -a /etc/yum.repos.d/elasticsearch.repo
-echo "gpgcheck=1" | sudo tee -a /etc/yum.repos.d/elasticsearch.repo
-echo "gpgkey=https://artifacts.elastic.co/GPG-KEY-elasticsearch" | sudo tee -a /etc/yum.repos.d/elasticsearch.repo
-echo "enabled=1" | sudo tee -a /etc/yum.repos.d/elasticsearch.repo
-echo "autorefresh=1" | sudo tee -a /etc/yum.repos.d/elasticsearch.repo
-echo "type=rpm-md" | sudo tee -a /etc/yum.repos.d/elasticsearch.repo
-sudo yum install filebeat-7* packetbeat-7* metricbeat-7* heartbeat-elastic-6* -y
+sudo yum install filebeat-7* packetbeat-7* metricbeat-7* heartbeat-elastic-7* auditbeat* -y
 clear
 echo ""
 ## Set variables for easy coding
@@ -382,6 +373,7 @@ pBeatOut="sudo tee -a /etc/packetbeat/packetbeat.yml"
 mBeatOut="sudo tee -a /etc/metricbeat/metricbeat.yml"
 fBeatOut="sudo tee -a /etc/filebeat/filebeat.yml"
 hBeatOut="sudo tee -a /etc/heartbeat/heartbeat.yml"
+aBeatOut="sudo tee -a /etc/auditbeat/heartbeat.yml"
 # Metricbeat Modules
 mBeatSys="sudo tee -a /etc/metricbeat/modules.d/system.yml"
 fBeatSys="sudo tee -a /etc/filebeat/modules.d/system.yml"
@@ -421,6 +413,9 @@ sudo touch /etc/filebeat/filebeat.yml
 echo ""
 sudo mv /etc/heartbeat/heartbeat.yml /etc/heartbeat/heartbeat.yml.bak
 sudo touch /etc/heartbeat/heartbeat.yml
+echo ""
+sudo mv /etc/auditbeat/auditbeat.yml /etc/auditbeat/auditbeat.yml.bak
+sudo touch /etc/auditbeat/auditbeat.yml
 #
 # There can be only one output, so Highlander rules.
 #
@@ -464,6 +459,11 @@ main_menu () {
         echo "cloud.id: ${cloudID}" | ${hBeatOut}
         echo "cloud.auth: ${cloudAuth}" | ${hBeatOut}
         echo "#============================= Elastic Cloud ==================================" | ${hBeatOut}
+		# AUDITBEAT
+		echo "#============================= Elastic Cloud ==================================" | ${aBeatOut}
+        echo "cloud.id: ${cloudID}" | ${aBeatOut}
+        echo "cloud.auth: ${cloudAuth}" | ${aBeatOut}
+        echo "#============================= Elastic Cloud ==================================" | ${aBeatOut}
 		#
         break
             ;;
@@ -548,6 +548,24 @@ main_menu () {
 		echo " ssl.verification_mode: none" | ${hBeatOut}
 		echo " protocol: \"https\"" | ${hBeatOut}  
 		echo "#=============================== ECE Output ===================================" | ${hBeatOut}
+		# AUDITBEAT
+		echo "#=============================== ECE Output ===================================" | ${aBeatOut}
+        echo "output.elasticsearch:" | ${aBeatOut}
+		echo " hosts: [\"${Ehosts}\"]" | ${aBeatOut}
+		echo " username: \"${EuserName}\"" | ${aBeatOut}
+		echo " password: \"${EpassWord}\"" | ${aBeatOut}
+		echo " ssl.verification_mode: none" | ${aBeatOut}
+		echo " protocol: \"https\"" | ${aBeatOut}
+		echo "###" | ${aBeatOut}
+		echo "# Kibana Config Sub-Section" | ${aBeatOut}
+		echo "###" | ${aBeatOut}
+		echo "setup.kibana:" | ${aBeatOut}
+		echo " host: \"${Khosts}\"" | ${aBeatOut}
+		echo " username: \"${KuserName}\"" | ${aBeatOut}
+		echo " password: \"${KpassWord}\"" | ${aBeatOut}
+		echo " ssl.verification_mode: none" | ${aBeatOut}
+		echo " protocol: \"https\"" | ${aBeatOut}  
+		echo "#=============================== ECE Output ===================================" | ${aBeatOut}
 		#
         break
             ;;
@@ -597,6 +615,16 @@ main_menu () {
 		echo "setup.kibana:" | ${hBeatOut}
 		echo " host: \"${Khosts}\"" | ${hBeatOut}
     echo "#=========================== Elastic On-Prem ==================================" | ${hBeatOut}
+		# AUDITBEAT
+		echo "#=========================== Elastic On-Prem ==================================" | ${aBeatOut}
+        echo "output.elasticsearch:" | ${aBeatOut}
+		echo " hosts: [\"${Ehosts}\"]" | ${aBeatOut}
+    echo "###" | ${aBeatOut}
+		echo "# Kibana Config Sub-Section" | ${aBeatOut}
+		echo "###" | ${aBeatOut}
+		echo "setup.kibana:" | ${aBeatOut}
+		echo " host: \"${Khosts}\"" | ${aBeatOut}
+    echo "#=========================== Elastic On-Prem ==================================" | ${aBeatOut}
 		#
 		break
              ;;
@@ -620,6 +648,7 @@ beats_menu () {
 	"Metricbeat"
 	"Filebeat"
 	"Heartbeat"
+	"Auditbeat
 	"Make like a tree, and leave."
     )
     select option in "${options[@]}"; do
@@ -970,6 +999,71 @@ beats_menu () {
 			echo ""  | ${hBeatOut}
 			echo "#================================ Logging =================================="  | ${hBeatOut}
 			echo "logging.level: debug"  | ${hBeatOut}
+			# Auditbeat
+			echo "############################# Auditbeat ######################################"  | ${aBeatOut}
+			echo "auditbeat.modules:" | ${aBeatOut}
+			echo "" | ${aBeatOut}
+			echo "- module: auditd" | ${aBeatOut}
+			echo "  audit_rule_files: [ '${path.config}/audit.rules.d/*.conf' ]" | ${aBeatOut}
+			echo "  audit_rules: |" | ${aBeatOut}
+			echo "    -a always,exit -F arch=b32 -S all -F key=32bit-abi" | ${aBeatOut}
+			echo "    ## Executions." | ${aBeatOut}
+			echo "    -a always,exit -F arch=b64 -S execve,execveat -k exec" | ${aBeatOut}
+			echo "    ## External access (warning: these can be expensive to audit)." | ${aBeatOut}
+			echo "    -a always,exit -F arch=b64 -S accept,bind,connect -F key=external-access" | ${aBeatOut}
+			echo "    ## Identity changes." | ${aBeatOut}
+			echo "    -w /etc/group -p wa -k identity" | ${aBeatOut}
+			echo "    -w /etc/passwd -p wa -k identity" | ${aBeatOut}
+			echo "    -w /etc/gshadow -p wa -k identity" | ${aBeatOut}
+			echo "    ## Unauthorized access attempts." | ${aBeatOut}
+			echo "    -a always,exit -F arch=b64 -S open,creat,truncate,ftruncate,openat,open_by_handle_at -F exit=-EACCES -k access" | ${aBeatOut}
+			echo "    -a always,exit -F arch=b64 -S open,creat,truncate,ftruncate,openat,open_by_handle_at -F exit=-EPERM -k access" | ${aBeatOut}
+			echo "" | ${aBeatOut}
+			echo "- module: file_integrity" | ${aBeatOut}
+			echo "  paths:" | ${aBeatOut}
+			echo "  - /bin" | ${aBeatOut}
+			echo "  - /usr/bin" | ${aBeatOut}
+			echo "  - /sbin" | ${aBeatOut}
+			echo "  - /usr/sbin" | ${aBeatOut}
+			echo "  - /etc" | ${aBeatOut}
+			echo "  - /home" | ${aBeatOut}
+			echo "" | ${aBeatOut}
+			echo "- module: system" | ${aBeatOut}
+			echo "  datasets:" | ${aBeatOut}
+			echo "    - host    # General host information, e.g. uptime, IPs" | ${aBeatOut}
+			echo "    - login   # User logins, logouts, and system boots." | ${aBeatOut}
+			echo "    - package # Installed, updated, and removed packages" | ${aBeatOut}
+			echo "    - process # Started and stopped processes" | ${aBeatOut}
+			echo "    - socket  # Opened and closed sockets" | ${aBeatOut}
+			echo "    - user    # User information" | ${aBeatOut}
+			echo "" | ${aBeatOut}
+			echo "  # How often datasets send state updates with the" | ${aBeatOut}
+			echo "  # current state of the system (e.g. all currently" | ${aBeatOut}
+			echo "  # running processes, all open sockets)." | ${aBeatOut}
+			echo "  state.period: 1h" | ${aBeatOut}
+			echo "" | ${aBeatOut}
+			echo "  # Enabled by default. Auditbeat will read password fields in" | ${aBeatOut}
+			echo "  # /etc/passwd and /etc/shadow and store a hash locally to" | ${aBeatOut}
+			echo "  # detect any changes." | ${aBeatOut}
+			echo "  user.detect_password_changes: true" | ${aBeatOut}
+			echo "" | ${aBeatOut}
+			echo "  # File patterns of the login record files." | ${aBeatOut}
+			echo "  login.wtmp_file_pattern: /var/log/wtmp*" | ${aBeatOut}
+			echo "  login.btmp_file_pattern: /var/log/btmp*" | ${aBeatOut}
+			echo "#==================== Elasticsearch template setting =========================="  | ${aBeatOut}
+			echo ""  | ${aBeatOut}
+			echo "setup.template.settings:"  | ${aBeatOut}
+			echo "  index.number_of_shards: 1"  | ${aBeatOut}
+			echo "  index.codec: best_compression"  | ${aBeatOut}
+			echo ""  | ${aBeatOut}
+			echo "#================================ Processors ==============================="  | ${aBeatOut}
+			echo ""  | ${aBeatOut}
+			echo "processors:"  | ${aBeatOut}
+			echo "  - add_host_metadata: ~"  | ${aBeatOut}
+			echo "  - add_cloud_metadata: ~"  | ${aBeatOut}
+			echo ""  | ${aBeatOut}
+			echo "#================================ Logging =================================="  | ${aBeatOut}
+			echo "logging.level: debug"  | ${aBeatOut}
 			break
 			;;
 			${options[1]})
@@ -1318,6 +1412,74 @@ beats_menu () {
 			break
 			;;
 			${options[5]})
+			# Auditbeat
+			echo "############################# Auditbeat ######################################"  | ${aBeatOut}
+			echo "auditbeat.modules:" | ${aBeatOut}
+			echo "" | ${aBeatOut}
+			echo "- module: auditd" | ${aBeatOut}
+			echo "  audit_rule_files: [ '${path.config}/audit.rules.d/*.conf' ]" | ${aBeatOut}
+			echo "  audit_rules: |" | ${aBeatOut}
+			echo "    -a always,exit -F arch=b32 -S all -F key=32bit-abi" | ${aBeatOut}
+			echo "    ## Executions." | ${aBeatOut}
+			echo "    -a always,exit -F arch=b64 -S execve,execveat -k exec" | ${aBeatOut}
+			echo "    ## External access (warning: these can be expensive to audit)." | ${aBeatOut}
+			echo "    -a always,exit -F arch=b64 -S accept,bind,connect -F key=external-access" | ${aBeatOut}
+			echo "    ## Identity changes." | ${aBeatOut}
+			echo "    -w /etc/group -p wa -k identity" | ${aBeatOut}
+			echo "    -w /etc/passwd -p wa -k identity" | ${aBeatOut}
+			echo "    -w /etc/gshadow -p wa -k identity" | ${aBeatOut}
+			echo "    ## Unauthorized access attempts." | ${aBeatOut}
+			echo "    -a always,exit -F arch=b64 -S open,creat,truncate,ftruncate,openat,open_by_handle_at -F exit=-EACCES -k access" | ${aBeatOut}
+			echo "    -a always,exit -F arch=b64 -S open,creat,truncate,ftruncate,openat,open_by_handle_at -F exit=-EPERM -k access" | ${aBeatOut}
+			echo "" | ${aBeatOut}
+			echo "- module: file_integrity" | ${aBeatOut}
+			echo "  paths:" | ${aBeatOut}
+			echo "  - /bin" | ${aBeatOut}
+			echo "  - /usr/bin" | ${aBeatOut}
+			echo "  - /sbin" | ${aBeatOut}
+			echo "  - /usr/sbin" | ${aBeatOut}
+			echo "  - /etc" | ${aBeatOut}
+			echo "  - /home" | ${aBeatOut}
+			echo "" | ${aBeatOut}
+			echo "- module: system" | ${aBeatOut}
+			echo "  datasets:" | ${aBeatOut}
+			echo "    - host    # General host information, e.g. uptime, IPs" | ${aBeatOut}
+			echo "    - login   # User logins, logouts, and system boots." | ${aBeatOut}
+			echo "    - package # Installed, updated, and removed packages" | ${aBeatOut}
+			echo "    - process # Started and stopped processes" | ${aBeatOut}
+			echo "    - socket  # Opened and closed sockets" | ${aBeatOut}
+			echo "    - user    # User information" | ${aBeatOut}
+			echo "" | ${aBeatOut}
+			echo "  # How often datasets send state updates with the" | ${aBeatOut}
+			echo "  # current state of the system (e.g. all currently" | ${aBeatOut}
+			echo "  # running processes, all open sockets)." | ${aBeatOut}
+			echo "  state.period: 1h" | ${aBeatOut}
+			echo "" | ${aBeatOut}
+			echo "  # Enabled by default. Auditbeat will read password fields in" | ${aBeatOut}
+			echo "  # /etc/passwd and /etc/shadow and store a hash locally to" | ${aBeatOut}
+			echo "  # detect any changes." | ${aBeatOut}
+			echo "  user.detect_password_changes: true" | ${aBeatOut}
+			echo "" | ${aBeatOut}
+			echo "  # File patterns of the login record files." | ${aBeatOut}
+			echo "  login.wtmp_file_pattern: /var/log/wtmp*" | ${aBeatOut}
+			echo "  login.btmp_file_pattern: /var/log/btmp*" | ${aBeatOut}
+			echo "#==================== Elasticsearch template setting =========================="  | ${aBeatOut}
+			echo ""  | ${aBeatOut}
+			echo "setup.template.settings:"  | ${aBeatOut}
+			echo "  index.number_of_shards: 1"  | ${aBeatOut}
+			echo "  index.codec: best_compression"  | ${aBeatOut}
+			echo ""  | ${aBeatOut}
+			echo "#================================ Processors ==============================="  | ${aBeatOut}
+			echo ""  | ${aBeatOut}
+			echo "processors:"  | ${aBeatOut}
+			echo "  - add_host_metadata: ~"  | ${aBeatOut}
+			echo "  - add_cloud_metadata: ~"  | ${aBeatOut}
+			echo ""  | ${aBeatOut}
+			echo "#================================ Logging =================================="  | ${aBeatOut}
+			echo "logging.level: debug"  | ${aBeatOut}
+			break
+			;;
+			${options[6]})
 			clear
 			echo "Make like a tree, and leave."
 			exit
@@ -1342,6 +1504,7 @@ beats_menu () {
 	"Metricbeat Only"
 	"Filebeat Only"
 	"Heartbeat Only"
+	"Auditbeat Only"
 	"Make like a tree, and leave."
     )
     select option in "${options[@]}"; do
@@ -1352,6 +1515,7 @@ beats_menu () {
 			sudo metricbeat setup && sudo service metricbeat start && sudo systemctl enable metricbeat
 			sudo filebeat setup && sudo service filebeat start && sudo systemctl enable filebeat
 			sudo heartbeat setup && sudo service heartbeat-elastic start && sudo systemctl enable heartbeat-elastic
+			sudo auditbeat setup && sudo service auditbeat start && sudo systemctl enable auditbeat
 			break
 			;;
 			${options[1]})
@@ -1375,6 +1539,10 @@ beats_menu () {
 			break
 			;;
 			${options[5]})
+			sudo auditbeat setup && sudo service auditbeat start && sudo systemctl enable auditbeat
+			break
+			;;
+			${options[6]})
 			clear
 			echo "Make like a tree, and leave."
 			exit
