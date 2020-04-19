@@ -809,10 +809,6 @@ beats_menu () {
 			echo "#- add_locale:" | ${pBeatOut}
 			echo "#    format: offset" | ${pBeatOut}
 			echo "" | ${pBeatOut}
-			echo "# The following example enriches each event with docker metadata, it matches" | ${pBeatOut}
-			echo "# container id from log path available in \`source\` field (by default it expects" | ${pBeatOut}
-			echo "# it to be /var/lib/docker/containers/*/*.log)." | ${pBeatOut}
-			echo "#" | ${pBeatOut}
 			echo "#processors:" | ${pBeatOut}
 			echo "#- add_docker_metadata: ~" | ${pBeatOut}
 			echo "#" | ${pBeatOut}
